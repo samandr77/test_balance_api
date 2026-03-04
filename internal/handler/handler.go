@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/samandr77/test_balance_api/internal/domain"
@@ -61,6 +62,11 @@ func (h *Handler) createWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, err := uuid.Parse(req.UserID); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{"invalid user_id: must be UUID"})
+		return
+	}
+
 	withdrawal, isIdempotent, err := h.svc.CreateWithdrawal(r.Context(), service.CreateRequest{
 		UserID:         req.UserID,
 		Amount:         req.Amount,
@@ -84,6 +90,11 @@ func (h *Handler) createWithdrawal(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getWithdrawal(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if _, err := uuid.Parse(id); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{"invalid id: must be UUID"})
+		return
+	}
+
 	withdrawal, err := h.svc.GetWithdrawal(r.Context(), id)
 	if err != nil {
 		h.handleError(w, err)
@@ -102,6 +113,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusBadRequest, errorResponse{err.Error()})
 	case errors.Is(err, domain.ErrInsufficientFunds):
 		writeJSON(w, http.StatusConflict, errorResponse{err.Error()})
+	case errors.Is(err, domain.ErrBalanceNotFound):
+		writeJSON(w, http.StatusUnprocessableEntity, errorResponse{err.Error()})
 	case errors.Is(err, domain.ErrIdempotencyConflict):
 		writeJSON(w, http.StatusUnprocessableEntity, errorResponse{err.Error()})
 	case errors.Is(err, domain.ErrWithdrawalNotFound):

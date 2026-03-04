@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -60,8 +61,8 @@ func (s *Service) CreateWithdrawal(ctx context.Context, req CreateRequest) (*dom
 		return w, false, nil
 	}
 
-	if !isUniqueViolationErr(err) {
-		if err == domain.ErrInsufficientFunds {
+	if !errors.Is(err, domain.ErrDuplicateIdempotencyKey) {
+		if errors.Is(err, domain.ErrInsufficientFunds) {
 			slog.Error("insufficient funds",
 				"user_id", req.UserID,
 				"requested", req.Amount,
@@ -110,8 +111,4 @@ func (s *Service) validate(req CreateRequest) error {
 func computeHash(parts ...string) string {
 	h := sha256.Sum256([]byte(strings.Join(parts, "|")))
 	return fmt.Sprintf("%x", h)
-}
-
-func isUniqueViolationErr(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "unique violation")
 }

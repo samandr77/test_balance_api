@@ -47,7 +47,7 @@ func (r *Repo) CreateWithdrawal(ctx context.Context, req CreateRequest) (*domain
 	).Scan(&balance)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrWithdrawalNotFound
+			return nil, domain.ErrBalanceNotFound
 		}
 		return nil, fmt.Errorf("lock balance: %w", err)
 	}
@@ -95,7 +95,7 @@ func (r *Repo) CreateWithdrawal(ctx context.Context, req CreateRequest) (*domain
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
-			return nil, fmt.Errorf("unique violation: %w", err)
+			return nil, domain.ErrDuplicateIdempotencyKey
 		}
 		return nil, fmt.Errorf("insert withdrawal: %w", err)
 	}
